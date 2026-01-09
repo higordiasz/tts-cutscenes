@@ -2,8 +2,8 @@
 <html>
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Cutscene</title>
     <style>
         html,
@@ -11,6 +11,7 @@
             margin: 0;
             height: 100%;
             background: #000;
+            overflow: hidden;
         }
 
         video {
@@ -19,28 +20,80 @@
             object-fit: contain;
             background: #000;
         }
+
+        #msg {
+            position: fixed;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font: 16px Arial;
+            padding: 20px;
+            text-align: center;
+            background: #000;
+        }
     </style>
 </head>
 
 <body>
-    <video id="v" controls autoplay muted playsinline></video>
+    <div id="msg" style="display:none;"></div>
+    <video id="v" controls autoplay muted playsinline preload="auto"></video>
 
     <script>
-        const params = new URLSearchParams(location.search);
-        const src = params.get("v");
-        const v = document.getElementById("v");
+        (function () {
+            var v = document.getElementById('v');
+            var msg = document.getElementById('msg');
 
-        if (!src) {
-            document.body.innerHTML = "<div style='color:#fff;font:16px sans-serif;padding:20px'>Faltou o parâmetro ?v=...</div>";
-        } else {
+            function getQueryParam(name) {
+                // parser simples ES5
+                var q = window.location.search.substring(1); // sem '?'
+                if (!q) return null;
+                var parts = q.split('&');
+                for (var i = 0; i < parts.length; i++) {
+                    var kv = parts[i].split('=');
+                    if (decodeURIComponent(kv[0] || '') === name) {
+                        return decodeURIComponent(kv[1] || '');
+                    }
+                }
+                return null;
+            }
+
+            var src = getQueryParam('v');
+
+            // fallback se não passar parâmetro
+            if (!src) src = 'videos/001.mp4';
+
+            // tenta carregar
             v.src = src;
-        }
 
-        // 1 clique destrava áudio/play (política comum de autoplay)
-        document.body.addEventListener("click", () => {
-            v.muted = false;
-            v.play().catch(() => { });
-        }, { once: true });
+            // tenta tocar (muted ajuda a permitir autoplay)
+            try { v.play(); } catch (e) { }
+
+            // 1 clique destrava áudio (se permitido)
+            function unlock() {
+                v.muted = false;
+                try { v.play(); } catch (e) { }
+                window.removeEventListener('mousedown', unlock);
+                window.removeEventListener('touchstart', unlock);
+                window.removeEventListener('keydown', unlock);
+            }
+            window.addEventListener('mousedown', unlock);
+            window.addEventListener('touchstart', unlock);
+            window.addEventListener('keydown', unlock);
+
+            // se der erro ao carregar o vídeo
+            v.addEventListener('error', function () {
+                msg.style.display = 'flex';
+                msg.innerHTML = 'Não consegui carregar o vídeo.<br><br>' +
+                    'URL: ' + src + '<br><br>' +
+                    'Teste abrir diretamente: <br>' +
+                    '<b>' + (location.origin + '/' + src) + '</b>';
+            });
+        })();
     </script>
 </body>
 
